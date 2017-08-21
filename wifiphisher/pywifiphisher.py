@@ -502,22 +502,26 @@ class WifiphisherEngine:
         4) AP-only 0x4
           1 card, 1 interface
           i) AP
-        5) Advanced w/ 1 vif 0x5
+        5) Advanced w/ 1 vif support AP/Monitor 0x5
           1 card, 2 interfaces
           i) AP, ii) Extensions
-        6) Advanced and Internet w/ 1 vif 0x6
+        6) Advanced and Internet w/ 1 vif support AP/Monitor 0x6
           2 cards, 3 interfaces
           i) AP, ii) Extensions, iii) Internet
         """
 
-        if not args.internetinterface and not args.nojamming:
-            self.op_mode = OP_MODE1
-        if args.internetinterface and not args.nojamming:
-            self.op_mode = OP_MODE2
-        if args.internetinterface and args.nojamming:
-            self.op_mode = OP_MODE3
-        if args.nojamming and not args.internetinterface:
-            self.op_mode = OP_MODE4
+        is_interface_added = interfaces.check_add_vif(args)
+        if not is_interface_added:
+            if not args.internetinterface and not args.nojamming:
+                self.op_mode = OP_MODE1
+            if args.internetinterface and not args.nojamming:
+                self.op_mode = OP_MODE2
+            if args.internetinterface and args.nojamming:
+                self.op_mode = OP_MODE3
+            if args.nojamming and not args.internetinterface:
+                self.op_mode = OP_MODE4
+        else:
+            self.op_mode = OP_MODE6 if args.internetinterface else OP_MODE5
 
     def internet_sharing_enabled(self):
         """
@@ -533,12 +537,22 @@ class WifiphisherEngine:
         mode (a mode that leverages two network cards)
         """
 
-        return self.op_mode in [OP_MODE1, OP_MODE2]
+        return self.op_mode in [OP_MODE1, OP_MODE2, OP_MODE5, OP_MODE6]
 
     def deauth_enabled(self):
         """
         Returns True if we are operating in a mode
         that deauth is enabled.
+        """
+
+        return self.op_mode in [OP_MODE1, OP_MODE2, OP_MODE5, OP_MODE6]
+
+    def freq_hopping_enabled(self):
+        """
+        Returns True if we are separating the wireless cards
+        for jamming and lunching AP.
+        ..note: MODE5 and MODE6 only use one card to do deauth and
+        lunch ap so it is not allowed to do frequency hopping.
         """
 
         return self.op_mode in [OP_MODE1, OP_MODE2]
@@ -588,10 +602,6 @@ class WifiphisherEngine:
         if not args.internetinterface:
             interfaces.toggle_networking(False)
 
-        # check if it is required to add virtual interface
-        # is_freq_hop_allowed can be passed to the extension
-        # manager to determine if frequecy hopping is allowed
-        is_freq_hop_allowed = True if not interfaces.check_add_vif(args) else False
         self.network_manager.start()
 
         # TODO: We should have more checks here:
@@ -808,7 +818,7 @@ class WifiphisherEngine:
         # We need to start EM before we boot the web server
         if self.advanced_enabled():
             shared_data = {
-                'is_freq_hop_allowed': is_freq_hop_allowed,
+                'is_freq_hop_allowed': self.freq_hopping_enabled(),
                 'target_ap_channel': channel or "",
                 'target_ap_essid': essid or "",
                 'target_ap_bssid': target_ap_mac or "",
