@@ -591,7 +591,7 @@ class WifiphisherEngine:
         # check if it is required to add virtual interface
         # is_freq_hop_allowed can be passed to the extension
         # manager to determine if frequecy hopping is allowed
-        is_freq_hop_allowed = interfaces.check_add_vif(args)
+        is_freq_hop_allowed = True if not interfaces.check_add_vif(args) else False
         self.network_manager.start()
 
         # TODO: We should have more checks here:

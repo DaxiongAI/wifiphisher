@@ -694,11 +694,11 @@ def check_add_vif(args):
     not given by the users
     :param args: A argparse.Namespace object
     :type args: argparse.Namespace
-    :return True if frequency hopping is allowed
+    :return True if one phy map multiple virtual interfaces
     :rtype: bool
     """
 
-    is_freq_hop_allowed = True
+    is_interface_added = False
     # check if the user specify -nJ or -jI
     if not args.nojamming and not args.jamminginterface:
         # map the phy interface to virtual interfaces
@@ -743,19 +743,19 @@ def check_add_vif(args):
             # if this card support both monitor and AP mode
             if score == 2:
                 add_virtual_interface(card)
-                is_freq_hop_allowed = False
+                is_interface_added = True
         # case 2 : one phy maps to multiple virtual interfaces
         elif len(phy_to_vifs) == 1 and len(phy_to_vifs.values()[0]) > 1:
-            is_freq_hop_allowed = False
+            is_interface_added = True
         # case 3 : we have multiple phy interfaces but only
         # one card support both monitor and AP and the other
         # ones just support the managed mode only
         elif len(phy_to_vifs) > 1:
             if vif_score_tuples[0][1] == 2 and vif_score_tuples[1][1] == 0:
                 add_virtual_interface(vif_score_tuples[0][0])
-                is_freq_hop_allowed = False
+                is_interface_added = True
 
-        return is_freq_hop_allowed
+        return is_interface_added
 
 
 def get_network_manager_objects(system_bus):
