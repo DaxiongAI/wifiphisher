@@ -73,7 +73,6 @@ class ExtensionManager(object):
         self._extensions = []
         self._interface = None
         self._socket = None
-        self._is_freq_hop_allowed = True
         self._should_continue = True
         self._packets_to_send = {str(k): [] for k in range(1, 14)}
         self._packets_to_send["*"] = []
@@ -82,6 +81,7 @@ class ExtensionManager(object):
         self._listen_thread = threading.Thread(target=self._listen)
         self._send_thread = threading.Thread(target=self._send)
         self._channelhop_thread = threading.Thread(target=self._channel_hop)
+        self._shared_data = None
 
     def get_ui_funcs(self):
         """
@@ -205,7 +205,7 @@ class ExtensionManager(object):
         # Convert shared_data from dict to named tuple
         shared_data = collections.namedtuple('GenericDict',
                                              shared_data.keys())(**shared_data)
-        self._is_freq_hop_allowed = shared_data.is_freq_hop_allowed
+        self._shared_data = shared_data
         # Initialize all extensions with the shared data
         for extension in self._extensions_str:
             mod = importlib.import_module(
@@ -235,8 +235,10 @@ class ExtensionManager(object):
         self._send_thread.start()
         # daemon for channel hopping
         self.get_channels()
-        if self._is_freq_hop_allowed:
+        if self._shared_data.is_freq_hop_allowed:
             self._channelhop_thread.start()
+        else:
+            self._current_channel = self._shared_data.target_ap_channel
 
     def on_exit(self):
         """
@@ -253,7 +255,7 @@ class ExtensionManager(object):
             self._listen_thread.join(3)
         if self._send_thread.is_alive():
             self._send_thread.join(3)
-        if self._is_freq_hop_allowed and\
+        if self._shared_data.is_freq_hop_allowed and\
                 self._channelhop_thread.is_alive():
             self._send_thread.join(3)
         # Close socket if it's open
