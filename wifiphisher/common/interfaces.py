@@ -396,6 +396,9 @@ class NetworkManager(object):
         if interface_name in self._active:
             raise InvalidInterfaceError(interface_name)
 
+        self._active.add(interface_name)
+        return True
+
     def up_interface(self, interface_name):
         """
         Equivalent to ifconfig interface_name up
